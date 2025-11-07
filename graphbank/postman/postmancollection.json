@@ -1,0 +1,89 @@
+{
+  "info": {
+    "name": "GraphBank Idempotency Demo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. First Payment (Processed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Idempotency-Key", "value": "demo-key-001" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 99.99,\n  \"accountId\": \"acc_123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "payments"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Retry Same Key (Already Processed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Idempotency-Key", "value": "demo-key-001" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 99.99,\n  \"accountId\": \"acc_123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "payments"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. New Payment (Processed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Idempotency-Key", "value": "demo-key-002" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 50.00,\n  \"accountId\": \"acc_123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/payments",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "payments"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Debug: Get Processed Count",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/debug/processed-count",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "debug", "processed-count"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
