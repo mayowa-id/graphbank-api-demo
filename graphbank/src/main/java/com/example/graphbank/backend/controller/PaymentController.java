@@ -25,7 +25,6 @@ public class PaymentController {
         this.paymentService = paymentService;
         this.redisTemplate = redisTemplate;
     }
-
     @PostMapping("/payments")
     public ResponseEntity<PaymentResponse> createPayment(
             @RequestBody PaymentRequest request,
@@ -33,7 +32,6 @@ public class PaymentController {
 
         String key = (String) httpRequest.getAttribute("idempotencyKey");
 
-        // Simulate business logic via service
         var result = paymentService.processPayment(key, request.amount(), request.accountId());
 
         PaymentResponse response = new PaymentResponse(
@@ -43,23 +41,35 @@ public class PaymentController {
                 result.processingStatus()
         );
 
-        // Cache final response in Redis
-        var cached = new IdempotencyInterceptor.CachedResponse(HttpStatus.CREATED.value(), response);
-        redisTemplate.opsForValue().set(
-                key,
-                objectMapper.writeValueAsString(cached),
-                1, TimeUnit.HOURS
-        );
+        // Safe Redis caching
+        try {
+            var cached = new IdempotencyInterceptor.CachedResponse(HttpStatus.CREATED.value(), response);
+            redisTemplate.opsForValue().set(
+                    key,
+                    objectMapper.writeValueAsString(cached),
+                    1, TimeUnit.HOURS
+            );
+        } catch (Exception e) {
+            // Log but don't crash
+            System.err.println("Redis cache failed: " + e.getMessage());
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
     // Debug: Prove only one payment was processed
     @GetMapping("/debug/processed-count")
     public int getProcessedCount() {
         return paymentService.getProcessedCount();
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
+    }
+
+
 }
+
 
 // Request/Response DTOs using records (cleaner, immutable)
 record PaymentRequest(double amount, String accountId) {}

@@ -25,23 +25,32 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         if (!request.getMethod().equals("POST")) return true;
 
         String key = request.getHeader("Idempotency-Key");
-        if (key == null) {
+        if (key == null || key.isBlank()) {
             response.setStatus(HttpStatus.BAD_REQUEST.value());
-            response.getWriter().write("Idempotency-Key required");
+            response.getWriter().write("{\"error\": \"Idempotency-Key is required\"}");
             return false;
         }
 
-        String cached = redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            CachedResponse parsed = objectMapper.readValue(cached, CachedResponse.class);
-            response.setStatus(parsed.status);
-            response.getWriter().write(objectMapper.writeValueAsString(parsed.body));
-            return false;
+        try {
+            String cached = redisTemplate.opsForValue().get(key);
+            if (cached != null) {
+                response.setStatus(201);
+                response.setContentType("application/json");
+                response.getWriter().write(cached);
+                return false;
+            }
+        } catch (Exception e) {
+            // Redis down? Continue without cache
+            System.err.println("Redis unavailable: " + e.getMessage());
         }
 
         // Mark as processing
-        CachedResponse processing = new CachedResponse(HttpStatus.PROCESSING.value(), new ProcessingBody("processing"));
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(processing), 30, TimeUnit.SECONDS);
+        try {
+            CachedResponse processing = new CachedResponse(102, new ProcessingBody("processing"));
+            redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(processing), 30, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            // Ignore
+        }
 
         request.setAttribute("idempotencyKey", key);
         return true;
